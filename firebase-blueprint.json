@@ -1,86 +1,47 @@
 {
   "entities": {
-    "Submission": {
-      "title": "Submission",
-      "description": "A salami submission from a student.",
+    "Drop": {
+      "title": "Drop",
+      "description": "A location-based message or photo shared by a user.",
       "type": "object",
       "properties": {
-        "university": { "type": "string", "description": "University ID" },
-        "department": { "type": "string", "description": "Department ID" },
-        "amount": { "type": "number", "description": "Amount received" },
-        "type": { "type": "string", "enum": ["money", "food", "both"], "description": "Type of salami" },
-        "comment": { "type": "string", "description": "User comment" },
-        "seniorName": { "type": "string", "description": "Name of the senior" },
-        "seniorFbLink": { "type": "string", "description": "Facebook link of the senior" },
-        "timestamp": { "type": "number", "description": "Creation timestamp" },
-        "likes": { "type": "number", "description": "Number of likes" }
+        "content": {
+          "type": "string",
+          "description": "The text content of the drop."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "The latitude coordinate of the drop."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "The longitude coordinate of the drop."
+        },
+        "authorId": {
+          "type": "string",
+          "description": "The UID of the user who created the drop."
+        },
+        "authorName": {
+          "type": "string",
+          "description": "The display name of the user who created the drop."
+        },
+        "authorPhoto": {
+          "type": "string",
+          "description": "The photo URL of the user who created the drop."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the drop was created."
+        }
       },
-      "required": ["university", "department", "amount", "type", "timestamp", "likes"]
-    },
-    "University": {
-      "title": "University",
-      "description": "A university in the system.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "Full name of the university" },
-        "shortName": { "type": "string", "description": "Short name or acronym" }
-      },
-      "required": ["name", "shortName"]
-    },
-    "Department": {
-      "title": "Department",
-      "description": "A department within a university.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "Name of the department" },
-        "universityId": { "type": "string", "description": "ID of the university it belongs to" }
-      },
-      "required": ["name", "universityId"]
-    },
-    "Meme": {
-      "title": "Meme",
-      "description": "A humorous meme about salami.",
-      "type": "object",
-      "properties": {
-        "expectation": { "type": "string", "description": "Expected salami" },
-        "reality": { "type": "string", "description": "Actual salami received" },
-        "imageUrl": { "type": "string", "description": "Optional image URL" },
-        "likes": { "type": "number", "description": "Number of likes" },
-        "timestamp": { "type": "number", "description": "Creation timestamp" }
-      },
-      "required": ["likes", "timestamp"]
-    },
-    "MemeComment": {
-      "title": "MemeComment",
-      "description": "A comment on a meme.",
-      "type": "object",
-      "properties": {
-        "text": { "type": "string", "description": "Comment text" },
-        "timestamp": { "type": "number", "description": "Creation timestamp" }
-      },
-      "required": ["text", "timestamp"]
+      "required": ["content", "latitude", "longitude", "authorId", "createdAt"]
     }
   },
   "firestore": {
-    "/universities/{universityId}": {
-      "schema": "University",
-      "description": "Collection of universities."
-    },
-    "/departments/{departmentId}": {
-      "schema": "Department",
-      "description": "Collection of departments."
-    },
-    "/submissions/{submissionId}": {
-      "schema": "Submission",
-      "description": "Collection of salami submissions."
-    },
-    "/memes/{memeId}": {
-      "schema": "Meme",
-      "description": "Collection of memes."
-    },
-    "/memes/{memeId}/comments/{commentId}": {
-      "schema": "MemeComment",
-      "description": "Subcollection of comments for a specific meme."
+    "/drops": {
+      "schema": "Drop",
+      "description": "Collection of all location-based drops."
     }
   }
 }

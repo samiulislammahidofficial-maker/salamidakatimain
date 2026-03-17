@@ -13,6 +13,13 @@ import {
   serverTimestamp,
   increment
 } from 'firebase/firestore';
+import { 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut, 
+  User 
+} from 'firebase/auth';
 import { db, auth } from '../firebase';
 
 export type SalamiType = 'money' | 'food' | 'both';
@@ -114,6 +121,10 @@ interface DataContextType {
   universities: University[];
   departments: Department[];
   memes: Meme[];
+  user: User | null;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+  isAdmin: boolean;
   addSubmission: (submission: Omit<Submission, 'id' | 'timestamp' | 'likes'>) => Promise<void>;
   likeSubmission: (id: string) => Promise<void>;
   addDepartment: (universityId: string, name: string) => Promise<void>;
@@ -130,72 +141,83 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [universities, setUniversities] = useState<University[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [memes, setMemes] = useState<Meme[]>([]);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const isAdmin = user?.email === "common.ipe.mail@gmail.com";
+
   useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+
     const seedData = async () => {
-      const univSnap = await getDocs(collection(db, 'universities'));
-      if (univSnap.empty) {
-        const INITIAL_UNIVERSITIES = [
-          { id: 'du', name: 'Dhaka University', shortName: 'DU' },
-          { id: 'buet', name: 'BUET', shortName: 'BUET' },
-          { id: 'nsus', name: 'North South University', shortName: 'NSU' },
-          { id: 'brac', name: 'BRAC University', shortName: 'BRACU' },
-          { id: 'ju', name: 'Jahangirnagar University', shortName: 'JU' },
-        ];
-        for (const u of INITIAL_UNIVERSITIES) {
-          await setDoc(doc(db, 'universities', u.id), { name: u.name, shortName: u.shortName });
-        }
-      }
-
-      const deptSnap = await getDocs(collection(db, 'departments'));
-      if (deptSnap.empty) {
-        const INITIAL_DEPARTMENTS = [
-          { id: 'cse-du', name: 'CSE', universityId: 'du' },
-          { id: 'iba-du', name: 'IBA', universityId: 'du' },
-          { id: 'eee-buet', name: 'EEE', universityId: 'buet' },
-          { id: 'cse-buet', name: 'CSE', universityId: 'buet' },
-          { id: 'bba-nsu', name: 'BBA', universityId: 'nsus' },
-          { id: 'cse-brac', name: 'CSE', universityId: 'brac' },
-          { id: 'pharm-ju', name: 'Pharmacy', universityId: 'ju' },
-        ];
-        for (const d of INITIAL_DEPARTMENTS) {
-          await setDoc(doc(db, 'departments', d.id), { name: d.name, universityId: d.universityId });
-        }
-      }
-
-      const subSnap = await getDocs(collection(db, 'submissions'));
-      if (subSnap.empty) {
-        const INITIAL_SUBMISSIONS = [
-          { university: 'du', department: 'cse-du', amount: 500, type: 'both', comment: 'ভাইয়া জোস! কাচ্চি খাওয়াইছে 😋', seniorName: 'রাহিম ভাই', seniorFbLink: 'https://facebook.com/rahim', timestamp: Date.now() - 100000, likes: 12 },
-          { university: 'buet', department: 'eee-buet', amount: 50, type: 'money', comment: 'জীবনটাই মিথ্যা 💀', timestamp: Date.now() - 200000, likes: 45 },
-          { university: 'nsus', department: 'bba-nsu', amount: 1000, type: 'money', comment: 'বড়লোক ভাইয়া 😎', timestamp: Date.now() - 300000, likes: 8 },
-          { university: 'du', department: 'iba-du', amount: 0, type: 'food', comment: 'শুধু সিঙ্গারা দিছে 😭', timestamp: Date.now() - 400000, likes: 23 },
-        ];
-        for (const s of INITIAL_SUBMISSIONS) {
-          await addDoc(collection(db, 'submissions'), s);
-        }
-      }
-
-      const memeSnap = await getDocs(collection(db, 'memes'));
-      if (memeSnap.empty) {
-        const INITIAL_MEMES = [
-          {
-            expectation: "৫০০ টাকা + কাচ্চি ভাইয়া খাওয়াবে 😎",
-            reality: "১টা সিঙ্গারা আর হাফ চা 😭",
-            likes: 124,
-            timestamp: Date.now() - 100000,
-          },
-          {
-            expectation: "সিনিয়র ভাইয়া ডাকছে, সালামি দিবে মনে হয় 🤑",
-            reality: "অ্যাসাইনমেন্ট করে দিতে বলছে 💀",
-            likes: 89,
-            timestamp: Date.now() - 200000,
+      try {
+        const univSnap = await getDocs(collection(db, 'universities'));
+        if (univSnap.empty) {
+          const INITIAL_UNIVERSITIES = [
+            { id: 'du', name: 'Dhaka University', shortName: 'DU' },
+            { id: 'buet', name: 'BUET', shortName: 'BUET' },
+            { id: 'nsus', name: 'North South University', shortName: 'NSU' },
+            { id: 'brac', name: 'BRAC University', shortName: 'BRACU' },
+            { id: 'ju', name: 'Jahangirnagar University', shortName: 'JU' },
+          ];
+          for (const u of INITIAL_UNIVERSITIES) {
+            await setDoc(doc(db, 'universities', u.id), { name: u.name, shortName: u.shortName });
           }
-        ];
-        for (const m of INITIAL_MEMES) {
-          await addDoc(collection(db, 'memes'), m);
         }
+
+        const deptSnap = await getDocs(collection(db, 'departments'));
+        if (deptSnap.empty) {
+          const INITIAL_DEPARTMENTS = [
+            { id: 'cse-du', name: 'CSE', universityId: 'du' },
+            { id: 'iba-du', name: 'IBA', universityId: 'du' },
+            { id: 'eee-buet', name: 'EEE', universityId: 'buet' },
+            { id: 'cse-buet', name: 'CSE', universityId: 'buet' },
+            { id: 'bba-nsu', name: 'BBA', universityId: 'nsus' },
+            { id: 'cse-brac', name: 'CSE', universityId: 'brac' },
+            { id: 'pharm-ju', name: 'Pharmacy', universityId: 'ju' },
+          ];
+          for (const d of INITIAL_DEPARTMENTS) {
+            await setDoc(doc(db, 'departments', d.id), { name: d.name, universityId: d.universityId });
+          }
+        }
+
+        const subSnap = await getDocs(collection(db, 'submissions'));
+        if (subSnap.empty) {
+          const INITIAL_SUBMISSIONS = [
+            { university: 'du', department: 'cse-du', amount: 500, type: 'both', comment: 'ভাইয়া জোস! কাচ্চি খাওয়াইছে 😋', seniorName: 'রাহিম ভাই', seniorFbLink: 'https://facebook.com/rahim', timestamp: Date.now() - 100000, likes: 12 },
+            { university: 'buet', department: 'eee-buet', amount: 50, type: 'money', comment: 'জীবনটাই মিথ্যা 💀', timestamp: Date.now() - 200000, likes: 45 },
+            { university: 'nsus', department: 'bba-nsu', amount: 1000, type: 'money', comment: 'বড়লোক ভাইয়া 😎', timestamp: Date.now() - 300000, likes: 8 },
+            { university: 'du', department: 'iba-du', amount: 0, type: 'food', comment: 'শুধু সিঙ্গারা দিছে 😭', timestamp: Date.now() - 400000, likes: 23 },
+          ];
+          for (const s of INITIAL_SUBMISSIONS) {
+            await addDoc(collection(db, 'submissions'), s);
+          }
+        }
+
+        const memeSnap = await getDocs(collection(db, 'memes'));
+        if (memeSnap.empty) {
+          const INITIAL_MEMES = [
+            {
+              expectation: "৫০০ টাকা + কাচ্চি ভাইয়া খাওয়াবে 😎",
+              reality: "১টা সিঙ্গারা আর হাফ চা 😭",
+              likes: 124,
+              timestamp: Date.now() - 100000,
+            },
+            {
+              expectation: "সিনিয়র ভাইয়া ডাকছে, সালামি দিবে মনে হয় 🤑",
+              reality: "অ্যাসাইনমেন্ট করে দিতে বলছে 💀",
+              likes: 89,
+              timestamp: Date.now() - 200000,
+            }
+          ];
+          for (const m of INITIAL_MEMES) {
+            await addDoc(collection(db, 'memes'), m);
+          }
+        }
+      } catch (error) {
+        console.warn('Seeding skipped or failed due to permissions:', error);
       }
     };
 
@@ -237,12 +259,30 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'memes'));
 
     return () => {
+      unsubAuth();
       unsubUniversities();
       unsubDepartments();
       unsubSubmissions();
       unsubMemes();
     };
   }, []);
+
+  const login = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error('Login failed:', error);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   const addSubmission = async (submission: Omit<Submission, 'id' | 'timestamp' | 'likes'>) => {
     const path = 'submissions';
@@ -320,7 +360,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <DataContext.Provider value={{ 
-      submissions, universities, departments, memes, 
+      submissions, universities, departments, memes, user, login, logout, isAdmin,
       addSubmission, likeSubmission, addDepartment, addMeme, likeMeme, addMemeComment,
       loading
     }}>
