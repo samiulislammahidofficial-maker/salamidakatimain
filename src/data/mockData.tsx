@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export type SalamiType = 'money' | 'food' | 'both';
 
@@ -89,7 +89,22 @@ const INITIAL_MEMES: Meme[] = [
   }
 ];
 
-export const useData = () => {
+interface DataContextType {
+  submissions: Submission[];
+  universities: University[];
+  departments: Department[];
+  memes: Meme[];
+  addSubmission: (submission: Omit<Submission, 'id' | 'timestamp' | 'likes'>) => void;
+  likeSubmission: (id: string) => void;
+  addDepartment: (universityId: string, name: string) => Department;
+  addMeme: (meme: Omit<Meme, 'id' | 'likes' | 'comments' | 'timestamp'>) => void;
+  likeMeme: (id: string) => void;
+  addMemeComment: (memeId: string, text: string) => void;
+}
+
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [universities] = useState<University[]>(INITIAL_UNIVERSITIES);
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DEPARTMENTS);
@@ -181,8 +196,20 @@ export const useData = () => {
     localStorage.setItem('salami_memes', JSON.stringify(updated));
   };
 
-  return { 
-    submissions, universities, departments, memes, 
-    addSubmission, likeSubmission, addDepartment, addMeme, likeMeme, addMemeComment 
-  };
+  return (
+    <DataContext.Provider value={{ 
+      submissions, universities, departments, memes, 
+      addSubmission, likeSubmission, addDepartment, addMeme, likeMeme, addMemeComment 
+    }}>
+      {children}
+    </DataContext.Provider>
+  );
+};
+
+export const useData = () => {
+  const context = useContext(DataContext);
+  if (context === undefined) {
+    throw new Error('useData must be used within a DataProvider');
+  }
+  return context;
 };
