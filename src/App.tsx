@@ -22,13 +22,13 @@ export default function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/geodrop" element={<GeoDrop />} />
             <Route path="/university/:id" element={<University />} />
             <Route path="/department/:id" element={<Department />} />
             <Route path="/submit" element={<Submit />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/calculator" element={<Calculator />} />
             <Route path="/memes" element={<Memes />} />
+            <Route path="/geodrop" element={<GeoDrop />} />
           </Routes>
         </Layout>
       </Router>
