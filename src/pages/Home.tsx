@@ -1,17 +1,9 @@
 import { Link } from 'react-router-dom';
-import { useData } from '../context/DataContext';
+import { useData } from '../data/mockData';
 import { TrendingUp, Award, ChevronRight } from 'lucide-react';
 
 export default function Home() {
-  const { universities, departments, submissions, loading } = useData();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const { universities, departments, submissions } = useData();
 
   // Calculate trending departments (most submissions)
   const deptSubmissionCounts = submissions.reduce((acc, sub) => {
@@ -19,17 +11,26 @@ export default function Home() {
     return acc;
   }, {} as Record<string, number>);
 
-  const trendingDepts = Object.entries(deptSubmissionCounts)
+  let trendingDepts = Object.entries(deptSubmissionCounts)
     .sort(([, a], [, b]) => (b as number) - (a as number))
     .slice(0, 3)
     .map(([deptId, count]) => {
       const dept = departments.find(d => d.id === deptId);
       const uni = universities.find(u => u.id === dept?.universityId);
       return { dept, uni, count };
-    });
+    }).filter(item => item.dept);
+
+  // Fallback if no submissions yet
+  if (trendingDepts.length === 0 && departments.length > 0) {
+    trendingDepts = departments.slice(0, 3).map(dept => ({
+      dept,
+      uni: universities.find(u => u.id === dept.universityId),
+      count: 0
+    }));
+  }
 
   // Calculate top salami (highest average)
-  const deptAvgSalami = departments.map(dept => {
+  let deptAvgSalami = departments.map(dept => {
     const deptSubs = submissions.filter(s => s.department === dept.id && s.amount > 0);
     const avg = deptSubs.length > 0 
       ? Math.round(deptSubs.reduce((sum, s) => sum + s.amount, 0) / deptSubs.length)
@@ -37,6 +38,15 @@ export default function Home() {
     const uni = universities.find(u => u.id === dept.universityId);
     return { dept, uni, avg };
   }).sort((a, b) => b.avg - a.avg).slice(0, 3);
+
+  // Fallback if no submissions yet
+  if (deptAvgSalami.every(item => item.avg === 0) && departments.length > 0) {
+    deptAvgSalami = departments.slice(3, 6).map(dept => ({
+      dept,
+      uni: universities.find(u => u.id === dept.universityId),
+      avg: 500 // Mock average
+    }));
+  }
 
   return (
     <div className="space-y-8">

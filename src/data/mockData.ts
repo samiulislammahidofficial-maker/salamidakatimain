@@ -7,13 +7,20 @@ import {
   doc, 
   query, 
   orderBy, 
-  collectionGroup,
   serverTimestamp,
-  getDocs,
   getDoc
 } from 'firebase/firestore';
-import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { db, auth } from '../firebase';
+import { db } from '../firebase';
+
+// Generate a simple anonymous ID for the session if not exists
+const getAnonymousId = () => {
+  let id = localStorage.getItem('salami_anon_id');
+  if (!id) {
+    id = 'anon_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('salami_anon_id', id);
+  }
+  return id;
+};
 
 export type SalamiType = 'money' | 'food' | 'both';
 
@@ -84,16 +91,9 @@ export const useData = () => {
   const [universities] = useState<University[]>(INITIAL_UNIVERSITIES);
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DEPARTMENTS);
   const [memes, setMemes] = useState<Meme[]>([]);
-  const [user, setUser] = useState(auth.currentUser);
+  const anonymousId = getAnonymousId();
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
-      if (u) {
-        setUser(u);
-      } else {
-        signInAnonymously(auth).catch(console.error);
-      }
-    });
 
     // Listen for submissions
     const qSubmissions = query(collection(db, 'submissions'), orderBy('timestamp', 'desc'));
@@ -131,7 +131,6 @@ export const useData = () => {
     });
 
     return () => {
-      unsubscribeAuth();
       unsubscribeSubmissions();
       unsubscribeDepts();
       unsubscribeMemes();
@@ -139,13 +138,12 @@ export const useData = () => {
   }, []);
 
   const addSubmission = async (submission: Omit<Submission, 'id' | 'timestamp' | 'likes' | 'userId'>) => {
-    if (!auth.currentUser) return;
     try {
       await addDoc(collection(db, 'submissions'), {
         ...submission,
         timestamp: Date.now(),
         likes: 0,
-        userId: auth.currentUser.uid
+        userId: anonymousId
       });
     } catch (error) {
       console.error("Error adding submission:", error);
@@ -180,13 +178,12 @@ export const useData = () => {
   };
 
   const addMeme = async (meme: Omit<Meme, 'id' | 'likes' | 'comments' | 'timestamp' | 'userId'>) => {
-    if (!auth.currentUser) return;
     try {
       await addDoc(collection(db, 'memes'), {
         ...meme,
         likes: 0,
         timestamp: Date.now(),
-        userId: auth.currentUser.uid
+        userId: anonymousId
       });
     } catch (error) {
       console.error("Error adding meme:", error);
@@ -208,12 +205,11 @@ export const useData = () => {
   };
 
   const addMemeComment = async (memeId: string, text: string) => {
-    if (!auth.currentUser) return;
     try {
       await addDoc(collection(db, 'memes', memeId, 'comments'), {
         text,
         timestamp: Date.now(),
-        userId: auth.currentUser.uid
+        userId: anonymousId
       });
     } catch (error) {
       console.error("Error adding comment:", error);
@@ -223,6 +219,6 @@ export const useData = () => {
   return { 
     submissions, universities, departments, memes, 
     addSubmission, likeSubmission, addDepartment, addMeme, likeMeme, addMemeComment,
-    user
+    anonymousId
   };
 };

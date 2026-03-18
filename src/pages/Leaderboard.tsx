@@ -1,16 +1,8 @@
 import { Link } from 'react-router-dom';
-import { useData } from '../context/DataContext';
+import { useData } from '../data/mockData';
 
 export default function Leaderboard() {
-  const { universities, departments, submissions, loading } = useData();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const { universities, departments, submissions } = useData();
 
   const deptStats = departments.map(dept => {
     const deptSubs = submissions.filter(s => s.department === dept.id && s.amount > 0);
@@ -23,6 +15,26 @@ export default function Leaderboard() {
 
   const topDildar = [...deptStats].sort((a, b) => b.avg - a.avg).slice(0, 5);
   const topKonjus = [...deptStats].sort((a, b) => a.avg - b.avg).slice(0, 5);
+
+  if (deptStats.length === 0) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-6 text-center">
+        <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center text-5xl">
+          📉
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold text-slate-900">লিডারবোর্ড খালি!</h1>
+          <p className="text-slate-500">এখনো কোনো সালামি সাবমিট করা হয়নি। প্রথম সাবমিট করো!</p>
+        </div>
+        <Link
+          to="/submit"
+          className="px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+        >
+          সালামি সাবমিট করো 🚀
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
