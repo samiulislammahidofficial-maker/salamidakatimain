@@ -1,21 +1,13 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useData } from '../context/DataContext';
+import { useData } from '../data/mockData';
 import { ChevronLeft, Heart, MessageCircle } from 'lucide-react';
 import { formatDistanceToNow } from '../lib/formatDate';
 
 export default function Department() {
   const { id } = useParams<{ id: string }>();
-  const { departments, universities, submissions, likeSubmission, loading } = useData();
+  const { departments, universities, submissions, likeSubmission } = useData();
   const [sortBy, setSortBy] = useState<'new' | 'high' | 'funny'>('new');
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   const dept = departments.find(d => d.id === id);
   const uni = universities.find(u => u.id === dept?.universityId);

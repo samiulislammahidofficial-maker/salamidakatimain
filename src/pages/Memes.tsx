@@ -1,19 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { Heart, MessageCircle, ImagePlus, Send, X } from 'lucide-react';
-import { useData } from '../context/DataContext';
+import { useData } from '../data/mockData';
 import { formatDistanceToNow } from '../lib/formatDate';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Memes() {
-  const { memes, addMeme, likeMeme, addMemeComment, loading } = useData();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const { memes, addMeme, likeMeme, addMemeComment } = useData();
   const [showForm, setShowForm] = useState(false);
   const [expectation, setExpectation] = useState('');
   const [reality, setReality] = useState('');
@@ -23,16 +15,9 @@ export default function Memes() {
   const [activeCommentMeme, setActiveCommentMeme] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
 
-  const [error, setError] = useState<string | null>(null);
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 500 * 1024) {
-        setError('ছবি ৫০০ কেবির বেশি হতে পারবে না 😭');
-        return;
-      }
-      setError(null);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImage(reader.result as string);
@@ -126,9 +111,6 @@ export default function Memes() {
                   <ImagePlus className="w-5 h-5" />
                   {image ? 'ছবি পরিবর্তন করো' : 'ছবি সিলেক্ট করো'}
                 </button>
-                {error && (
-                  <p className="text-red-500 text-xs font-medium mt-1">{error}</p>
-                )}
                 {image && (
                   <div className="mt-3 relative rounded-xl overflow-hidden border border-blue-200">
                     <img src={image} alt="Preview" className="w-full h-auto max-h-48 object-cover" />

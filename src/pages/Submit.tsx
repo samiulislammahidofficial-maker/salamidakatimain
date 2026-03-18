@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send, Coins, Pizza, Wallet, User, Link as LinkIcon } from 'lucide-react';
-import { useData, SalamiType } from '../context/DataContext';
+import { useData, SalamiType } from '../data/mockData';
 import { motion } from 'framer-motion';
 
 export default function Submit() {

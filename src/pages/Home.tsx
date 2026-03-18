@@ -1,17 +1,9 @@
 import { Link } from 'react-router-dom';
-import { useData } from '../context/DataContext';
+import { useData } from '../data/mockData';
 import { TrendingUp, Award, ChevronRight } from 'lucide-react';
 
 export default function Home() {
-  const { universities, departments, submissions, loading } = useData();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const { universities, departments, submissions } = useData();
 
   // Calculate trending departments (most submissions)
   const deptSubmissionCounts = submissions.reduce((acc, sub) => {
