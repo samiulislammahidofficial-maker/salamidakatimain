@@ -1,11 +1,33 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromCache, getDocFromServer } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  doc, 
+  getDocFromCache, 
+  getDocFromServer,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  Timestamp
+} from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+export {
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  Timestamp
+};
 
 // Test connection to Firestore
 async function testConnection() {
