@@ -10,6 +10,8 @@ import {
   onSnapshot,
   query,
   orderBy,
+  where,
+  limit,
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore';
@@ -25,6 +27,8 @@ export {
   onSnapshot,
   query,
   orderBy,
+  where,
+  limit,
   serverTimestamp,
   Timestamp
 };
