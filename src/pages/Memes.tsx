@@ -26,20 +26,20 @@ export default function Memes() {
     }
   };
 
-  const handleSubmitMeme = (e: React.FormEvent) => {
+  const handleSubmitMeme = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!expectation && !image) return;
-    addMeme({ expectation, reality, imageUrl: image });
+    await addMeme({ expectation, reality, imageUrl: image });
     setExpectation('');
     setReality('');
     setImage('');
     setShowForm(false);
   };
 
-  const handleAddComment = (e: React.FormEvent, memeId: string) => {
+  const handleAddComment = async (e: React.FormEvent, memeId: string) => {
     e.preventDefault();
     if (!commentText.trim()) return;
-    addMemeComment(memeId, commentText.trim());
+    await addMemeComment(memeId, commentText.trim());
     setCommentText('');
   };
 

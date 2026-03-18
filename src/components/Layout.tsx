@@ -1,14 +1,18 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Home, PlusCircle, Trophy, Calculator, Smile } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Home, PlusCircle, Trophy, Calculator, Smile, MapPin, LogIn, LogOut, User } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { auth, googleProvider, signInWithPopup, signOut } from '../firebase';
+import FAB from './FAB';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const navItems = [
     { path: '/', icon: Home, label: 'হোম' },
+    { path: '/geodrop', icon: MapPin, label: 'জিও ড্রপ' },
     { path: '/submit', icon: PlusCircle, label: 'সাবমিট' },
     { path: '/leaderboard', icon: Trophy, label: 'লিডারবোর্ড' },
     { path: '/calculator', icon: Calculator, label: 'ক্যালকুলেটর' },
@@ -24,7 +28,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <span>সালামি ডাকাতি</span>
             <span className="text-3xl">💰</span>
           </Link>
-          <nav className="flex gap-6">
+          <nav className="flex items-center gap-6">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -67,6 +71,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </motion.div>
       </main>
+
+      {/* FAB */}
+      <FAB onClick={() => navigate('/geodrop')} />
 
       {/* Bottom Navigation (Mobile) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-blue-50/80 backdrop-blur-md border-t border-blue-100 z-50 pb-safe">

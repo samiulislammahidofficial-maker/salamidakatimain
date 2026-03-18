@@ -1,4 +1,19 @@
 import { useState, useEffect } from 'react';
+import { 
+  collection, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  doc, 
+  query, 
+  orderBy, 
+  collectionGroup,
+  serverTimestamp,
+  getDocs,
+  getDoc
+} from 'firebase/firestore';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '../firebase';
 
 export type SalamiType = 'money' | 'food' | 'both';
 
@@ -13,6 +28,7 @@ export interface Submission {
   seniorFbLink?: string;
   timestamp: number;
   likes: number;
+  userId: string;
 }
 
 export interface University {
@@ -31,6 +47,7 @@ export interface MemeComment {
   id: string;
   text: string;
   timestamp: number;
+  userId: string;
 }
 
 export interface Meme {
@@ -41,6 +58,7 @@ export interface Meme {
   likes: number;
   comments: MemeComment[];
   timestamp: number;
+  userId: string;
 }
 
 const INITIAL_UNIVERSITIES: University[] = [
@@ -61,128 +79,150 @@ const INITIAL_DEPARTMENTS: Department[] = [
   { id: 'pharm-ju', name: 'Pharmacy', universityId: 'ju' },
 ];
 
-const INITIAL_SUBMISSIONS: Submission[] = [
-  { id: '1', university: 'du', department: 'cse-du', amount: 500, type: 'both', comment: 'ভাইয়া জোস! কাচ্চি খাওয়াইছে 😋', seniorName: 'রাহিম ভাই', seniorFbLink: 'https://facebook.com/rahim', timestamp: Date.now() - 100000, likes: 12 },
-  { id: '2', university: 'buet', department: 'eee-buet', amount: 50, type: 'money', comment: 'জীবনটাই মিথ্যা 💀', timestamp: Date.now() - 200000, likes: 45 },
-  { id: '3', university: 'nsus', department: 'bba-nsu', amount: 1000, type: 'money', comment: 'বড়লোক ভাইয়া 😎', timestamp: Date.now() - 300000, likes: 8 },
-  { id: '4', university: 'du', department: 'iba-du', amount: 0, type: 'food', comment: 'শুধু সিঙ্গারা দিছে 😭', timestamp: Date.now() - 400000, likes: 23 },
-];
-
-const INITIAL_MEMES: Meme[] = [
-  {
-    id: 'm1',
-    expectation: "৫০০ টাকা + কাচ্চি ভাইয়া খাওয়াবে 😎",
-    reality: "১টা সিঙ্গারা আর হাফ চা 😭",
-    likes: 124,
-    comments: [
-      { id: 'c1', text: 'ভাই একদম সত্যি কথা 😭', timestamp: Date.now() - 50000 }
-    ],
-    timestamp: Date.now() - 100000,
-  },
-  {
-    id: 'm2',
-    expectation: "সিনিয়র ভাইয়া ডাকছে, সালামি দিবে মনে হয় 🤑",
-    reality: "অ্যাসাইনমেন্ট করে দিতে বলছে 💀",
-    likes: 89,
-    comments: [],
-    timestamp: Date.now() - 200000,
-  }
-];
-
 export const useData = () => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [universities] = useState<University[]>(INITIAL_UNIVERSITIES);
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DEPARTMENTS);
   const [memes, setMemes] = useState<Meme[]>([]);
+  const [user, setUser] = useState(auth.currentUser);
 
   useEffect(() => {
-    const storedSubs = localStorage.getItem('salami_submissions');
-    if (storedSubs) setSubmissions(JSON.parse(storedSubs));
-    else {
-      setSubmissions(INITIAL_SUBMISSIONS);
-      localStorage.setItem('salami_submissions', JSON.stringify(INITIAL_SUBMISSIONS));
-    }
+    const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
+      if (u) {
+        setUser(u);
+      } else {
+        signInAnonymously(auth).catch(console.error);
+      }
+    });
 
-    const storedDepts = localStorage.getItem('salami_departments');
-    if (storedDepts) setDepartments(JSON.parse(storedDepts));
-    else {
-      setDepartments(INITIAL_DEPARTMENTS);
-      localStorage.setItem('salami_departments', JSON.stringify(INITIAL_DEPARTMENTS));
-    }
+    // Listen for submissions
+    const qSubmissions = query(collection(db, 'submissions'), orderBy('timestamp', 'desc'));
+    const unsubscribeSubmissions = onSnapshot(qSubmissions, (snapshot) => {
+      const subs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
+      setSubmissions(subs);
+    }, (error) => {
+      console.error("Firestore Submissions Error:", error);
+    });
 
-    const storedMemes = localStorage.getItem('salami_memes');
-    if (storedMemes) setMemes(JSON.parse(storedMemes));
-    else {
-      setMemes(INITIAL_MEMES);
-      localStorage.setItem('salami_memes', JSON.stringify(INITIAL_MEMES));
-    }
+    // Listen for user-added departments
+    const unsubscribeDepts = onSnapshot(collection(db, 'departments'), (snapshot) => {
+      const addedDepts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Department));
+      setDepartments([...INITIAL_DEPARTMENTS, ...addedDepts]);
+    }, (error) => {
+      console.error("Firestore Departments Error:", error);
+    });
+
+    // Listen for memes
+    const qMemes = query(collection(db, 'memes'), orderBy('timestamp', 'desc'));
+    const unsubscribeMemes = onSnapshot(qMemes, (snapshot) => {
+      const memeList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), comments: [] } as Meme));
+      
+      // For each meme, listen for comments
+      memeList.forEach(meme => {
+        onSnapshot(query(collection(db, 'memes', meme.id, 'comments'), orderBy('timestamp', 'asc')), (commentSnapshot) => {
+          const comments = commentSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as MemeComment));
+          setMemes(prev => prev.map(m => m.id === meme.id ? { ...m, comments } : m));
+        });
+      });
+
+      setMemes(memeList);
+    }, (error) => {
+      console.error("Firestore Memes Error:", error);
+    });
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeSubmissions();
+      unsubscribeDepts();
+      unsubscribeMemes();
+    };
   }, []);
 
-  const addSubmission = (submission: Omit<Submission, 'id' | 'timestamp' | 'likes'>) => {
-    const newSubmission: Submission = {
-      ...submission,
-      id: Math.random().toString(36).substring(7),
-      timestamp: Date.now(),
-      likes: 0,
-    };
-    const updated = [newSubmission, ...submissions];
-    setSubmissions(updated);
-    localStorage.setItem('salami_submissions', JSON.stringify(updated));
+  const addSubmission = async (submission: Omit<Submission, 'id' | 'timestamp' | 'likes' | 'userId'>) => {
+    if (!auth.currentUser) return;
+    try {
+      await addDoc(collection(db, 'submissions'), {
+        ...submission,
+        timestamp: Date.now(),
+        likes: 0,
+        userId: auth.currentUser.uid
+      });
+    } catch (error) {
+      console.error("Error adding submission:", error);
+    }
   };
 
-  const likeSubmission = (id: string) => {
-    const updated = submissions.map(s => s.id === id ? { ...s, likes: s.likes + 1 } : s);
-    setSubmissions(updated);
-    localStorage.setItem('salami_submissions', JSON.stringify(updated));
-  };
-
-  const addDepartment = (universityId: string, name: string) => {
-    const newDept: Department = {
-      id: `dept-${Date.now()}`,
-      name,
-      universityId
-    };
-    const updated = [...departments, newDept];
-    setDepartments(updated);
-    localStorage.setItem('salami_departments', JSON.stringify(updated));
-    return newDept;
-  };
-
-  const addMeme = (meme: Omit<Meme, 'id' | 'likes' | 'comments' | 'timestamp'>) => {
-    const newMeme: Meme = {
-      ...meme,
-      id: `meme-${Date.now()}`,
-      likes: 0,
-      comments: [],
-      timestamp: Date.now()
-    };
-    const updated = [newMeme, ...memes];
-    setMemes(updated);
-    localStorage.setItem('salami_memes', JSON.stringify(updated));
-  };
-
-  const likeMeme = (id: string) => {
-    const updated = memes.map(m => m.id === id ? { ...m, likes: m.likes + 1 } : m);
-    setMemes(updated);
-    localStorage.setItem('salami_memes', JSON.stringify(updated));
-  };
-
-  const addMemeComment = (memeId: string, text: string) => {
-    const updated = memes.map(m => {
-      if (m.id === memeId) {
-        return {
-          ...m,
-          comments: [...m.comments, { id: `c-${Date.now()}`, text, timestamp: Date.now() }]
-        };
+  const likeSubmission = async (id: string) => {
+    try {
+      const subRef = doc(db, 'submissions', id);
+      const subSnap = await getDoc(subRef);
+      if (subSnap.exists()) {
+        await updateDoc(subRef, {
+          likes: (subSnap.data().likes || 0) + 1
+        });
       }
-      return m;
-    });
-    setMemes(updated);
-    localStorage.setItem('salami_memes', JSON.stringify(updated));
+    } catch (error) {
+      console.error("Error liking submission:", error);
+    }
+  };
+
+  const addDepartment = async (universityId: string, name: string) => {
+    try {
+      const docRef = await addDoc(collection(db, 'departments'), {
+        name,
+        universityId
+      });
+      return { id: docRef.id, name, universityId };
+    } catch (error) {
+      console.error("Error adding department:", error);
+      return { id: `temp-${Date.now()}`, name, universityId };
+    }
+  };
+
+  const addMeme = async (meme: Omit<Meme, 'id' | 'likes' | 'comments' | 'timestamp' | 'userId'>) => {
+    if (!auth.currentUser) return;
+    try {
+      await addDoc(collection(db, 'memes'), {
+        ...meme,
+        likes: 0,
+        timestamp: Date.now(),
+        userId: auth.currentUser.uid
+      });
+    } catch (error) {
+      console.error("Error adding meme:", error);
+    }
+  };
+
+  const likeMeme = async (id: string) => {
+    try {
+      const memeRef = doc(db, 'memes', id);
+      const memeSnap = await getDoc(memeRef);
+      if (memeSnap.exists()) {
+        await updateDoc(memeRef, {
+          likes: (memeSnap.data().likes || 0) + 1
+        });
+      }
+    } catch (error) {
+      console.error("Error liking meme:", error);
+    }
+  };
+
+  const addMemeComment = async (memeId: string, text: string) => {
+    if (!auth.currentUser) return;
+    try {
+      await addDoc(collection(db, 'memes', memeId, 'comments'), {
+        text,
+        timestamp: Date.now(),
+        userId: auth.currentUser.uid
+      });
+    } catch (error) {
+      console.error("Error adding comment:", error);
+    }
   };
 
   return { 
     submissions, universities, departments, memes, 
-    addSubmission, likeSubmission, addDepartment, addMeme, likeMeme, addMemeComment 
+    addSubmission, likeSubmission, addDepartment, addMeme, likeMeme, addMemeComment,
+    user
   };
 };

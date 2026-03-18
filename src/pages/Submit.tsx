@@ -21,7 +21,7 @@ export default function Submit() {
 
   const filteredDepts = departments.filter(d => d.universityId === uniId);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!uniId || !type) return;
     if (deptId === 'new' && !newDeptName.trim()) return;
@@ -30,17 +30,16 @@ export default function Submit() {
 
     setIsSubmitting(true);
 
-    // Simulate network delay for effect
-    setTimeout(() => {
+    try {
       let finalDeptId = deptId;
       
       // Add new department if selected
       if (deptId === 'new') {
-        const newDept = addDepartment(uniId, newDeptName.trim());
+        const newDept = await addDepartment(uniId, newDeptName.trim());
         finalDeptId = newDept.id;
       }
 
-      addSubmission({
+      await addSubmission({
         university: uniId,
         department: finalDeptId,
         type: type as SalamiType,
@@ -56,7 +55,10 @@ export default function Submit() {
       setTimeout(() => {
         navigate(`/department/${finalDeptId}`);
       }, 1500);
-    }, 800);
+    } catch (error) {
+      console.error("Submission error:", error);
+      setIsSubmitting(false);
+    }
   };
 
   if (showSuccess) {

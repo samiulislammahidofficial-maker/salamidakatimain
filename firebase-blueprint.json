@@ -1,0 +1,75 @@
+{
+  "entities": {
+    "Submission": {
+      "title": "Salami Submission",
+      "description": "A record of salami received from a senior.",
+      "type": "object",
+      "properties": {
+        "universityId": { "type": "string", "description": "The ID of the university." },
+        "departmentId": { "type": "string", "description": "The ID of the department." },
+        "amount": { "type": "number", "description": "The amount of salami received." },
+        "type": { "type": "string", "enum": ["money", "food", "both"], "description": "The type of salami." },
+        "seniorName": { "type": "string", "description": "The name of the senior (optional)." },
+        "seniorFbLink": { "type": "string", "description": "The Facebook link of the senior (optional)." },
+        "comment": { "type": "string", "description": "A comment about the submission (optional)." },
+        "timestamp": { "type": "number", "description": "When the submission was made (ms)." },
+        "userId": { "type": "string", "description": "The ID of the user who submitted." },
+        "likes": { "type": "number", "description": "Number of likes." }
+      },
+      "required": ["universityId", "departmentId", "amount", "type", "timestamp", "userId", "likes"]
+    },
+    "Department": {
+      "title": "Department",
+      "description": "A university department.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the department." },
+        "universityId": { "type": "string", "description": "The ID of the university." }
+      },
+      "required": ["name", "universityId"]
+    },
+    "Meme": {
+      "title": "Meme",
+      "description": "A salami-related meme.",
+      "type": "object",
+      "properties": {
+        "expectation": { "type": "string", "description": "Expectation text." },
+        "reality": { "type": "string", "description": "Reality text." },
+        "imageUrl": { "type": "string", "description": "Base64 or URL of the image." },
+        "likes": { "type": "number", "description": "Number of likes." },
+        "timestamp": { "type": "number", "description": "When the meme was posted (ms)." },
+        "userId": { "type": "string", "description": "The ID of the user who posted." }
+      },
+      "required": ["likes", "timestamp", "userId"]
+    },
+    "MemeComment": {
+      "title": "Meme Comment",
+      "description": "A comment on a meme.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The comment text." },
+        "timestamp": { "type": "number", "description": "When the comment was made (ms)." },
+        "userId": { "type": "string", "description": "The ID of the user who commented." }
+      },
+      "required": ["text", "timestamp", "userId"]
+    }
+  },
+  "firestore": {
+    "/submissions": {
+      "schema": "Submission",
+      "description": "Collection of all salami submissions."
+    },
+    "/departments": {
+      "schema": "Department",
+      "description": "Collection of user-added departments."
+    },
+    "/memes": {
+      "schema": "Meme",
+      "description": "Collection of all memes."
+    },
+    "/memes/{memeId}/comments": {
+      "schema": "MemeComment",
+      "description": "Comments on a specific meme."
+    }
+  }
+}

@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "common.ipe.mail@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidSubmission(data) {
+      return data.keys().hasAll(['universityId', 'departmentId', 'amount', 'type', 'timestamp', 'userId', 'likes']) &&
+             data.universityId is string && data.universityId.size() > 0 &&
+             data.departmentId is string && data.departmentId.size() > 0 &&
+             data.amount is number && data.amount >= 0 &&
+             data.type in ['money', 'food', 'both'] &&
+             data.timestamp is number &&
+             data.userId == request.auth.uid &&
+             data.likes == 0 &&
+             (!('comment' in data) || (data.comment is string && data.comment.size() < 500)) &&
+             (!('seniorName' in data) || (data.seniorName is string && data.seniorName.size() < 100)) &&
+             (!('seniorFbLink' in data) || (data.seniorFbLink is string && data.seniorFbLink.size() < 200));
+    }
+
+    function isValidDepartment(data) {
+      return data.keys().hasAll(['name', 'universityId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.universityId is string && data.universityId.size() > 0;
+    }
+
+    function isValidMeme(data) {
+      return data.keys().hasAll(['likes', 'timestamp', 'userId']) &&
+             data.likes == 0 &&
+             data.timestamp is number &&
+             data.userId == request.auth.uid &&
+             (!('expectation' in data) || (data.expectation is string && data.expectation.size() < 200)) &&
+             (!('reality' in data) || (data.reality is string && data.reality.size() < 200)) &&
+             (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() < 1000000)); // Limit image size in string
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['text', 'timestamp', 'userId']) &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 500 &&
+             data.timestamp is number &&
+             data.userId == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /submissions/{submissionId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidSubmission(request.resource.data);
+      allow update: if isAuthenticated() && 
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) &&
+                    request.resource.data.likes == resource.data.likes + 1;
+      allow delete: if isAdmin();
+    }
+
+    match /departments/{deptId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidDepartment(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /memes/{memeId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidMeme(request.resource.data);
+      allow update: if isAuthenticated() && 
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) &&
+                    request.resource.data.likes == resource.data.likes + 1;
+      allow delete: if isAdmin() || isOwner(resource.data.userId);
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && isValidComment(request.resource.data);
+        allow delete: if isAdmin() || isOwner(resource.data.userId);
+      }
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if isOwner(userId) && 
+                            hasOnlyAllowedFields(['role', 'displayName', 'email']) &&
+                            (request.resource.data.role == 'user' || isAdmin());
+    }
+  }
+}

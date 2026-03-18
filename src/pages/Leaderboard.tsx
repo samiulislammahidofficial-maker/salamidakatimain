@@ -1,8 +1,16 @@
 import { Link } from 'react-router-dom';
-import { useData } from '../data/mockData';
+import { useData } from '../context/DataContext';
 
 export default function Leaderboard() {
-  const { universities, departments, submissions } = useData();
+  const { universities, departments, submissions, loading } = useData();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   const deptStats = departments.map(dept => {
     const deptSubs = submissions.filter(s => s.department === dept.id && s.amount > 0);

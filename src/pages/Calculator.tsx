@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
-import { useData } from '../data/mockData';
+import { useData } from '../context/DataContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Calculator() {
-  const { universities, departments, submissions } = useData();
+  const { universities, departments, submissions, loading } = useData();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
   
   const [uniId, setUniId] = useState('');
   const [deptId, setDeptId] = useState('');
